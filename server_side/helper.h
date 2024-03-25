@@ -15,4 +15,5 @@
 #define RESET   "\x1b[0m"
 void changeColor(const char* color);
 void ERROR(bool _exit,const char* message);
+int min(int a,int b);
 #endif

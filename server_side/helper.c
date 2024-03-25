@@ -21,3 +21,5 @@ void ERROR(bool _exit,const char* message){
     }
 
 }
+
+int min(int a,int b){return a>b?a:b;}
