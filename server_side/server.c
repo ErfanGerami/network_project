@@ -5,8 +5,8 @@
 int PORT=3000;
 int PART_SIZE=1024;
 int BACK_LOG=3;
-char* BACK_UP_PORT="NOTSET";
-char* BACK_UP_IP="NOTSET";
+char* BACK_UP_PORT="UNSET";//set to 0 for unset
+char* BACK_UP_IP="NOTSET";//set to UNSET for unset
 /*
 protocole works like this:
 in the beginning of the connection server sends some data like PART_SIZE BACK_UP_PORT BACK_UP_IP
@@ -18,6 +18,8 @@ it could raise some bugs for example having the same characters in the main data
 client add some headers like 1 if the command was successfull so it never returns nothing
 */
 int main(int argc,char** argv){
+    signal(SIGPIPE, SIG_IGN);
+
     //my variables------------------------------------------
     int result;
     char command[400];
@@ -25,7 +27,7 @@ int main(int argc,char** argv){
     initialize(argc,argv,&PORT,&BACK_LOG,&BACK_UP_PORT,&BACK_UP_IP,&PART_SIZE);
     struct Server* server=set_up_server(PORT,BACK_LOG);
     while(1){
-
+        printf("waiting for clients to join\n   ");
         struct Client* client=acceptClient(server->socket_fd);
         if(!client->accept_successful){
             free(client);//the memory is dynamicly allocated so it shoul be deallocated
@@ -38,13 +40,15 @@ int main(int argc,char** argv){
         }
         while(true){
             char* answer=getAndSendCommandAndRecieveResult(client,PART_SIZE);
+            if(!answer){
+                close(client->socket_fd);
+                break;
+            }
             checkAndPrintAnswer(answer);
+
             free(answer);
-
-
-
-
         }
+        free(client);
 
     }
 

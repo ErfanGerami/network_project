@@ -1,6 +1,68 @@
 
 #include "server_client.h"
+void printInput(struct Client * client){    printf("%s@:%s$ ",client->IP,client->path);}
+bool sendMessage(struct Client* client,char* message,int PART_SIZE){
+    char size_of_result[21]={0};
+    sprintf(size_of_result,"%d",strlen(message));
+    //the size of number should be exactly 20
+    //because we have two sends in continous we should specifiy their size
 
+    if(send(client->socket_fd,size_of_result,20,0)<=0){
+        ERROR(false,"error while sending size");
+        return false;
+    }
+    int size_of_message=strlen(message);
+    int sent=0;
+
+    //it sends data in parts until all the data is send
+    while(sent<size_of_message){
+        int data_to_send=min(PART_SIZE,size_of_message-sent);
+        if(send(client->socket_fd,message+sent,data_to_send,0)<data_to_send){
+            ERROR(false,NULL);
+            return false;
+        }
+        sent+=data_to_send;
+    }
+
+    return true;
+
+}
+char* recieveMessage(struct Client* client,int PART_SIZE){
+    char* answer_size_string[21]={0};
+    if(recv(client->socket_fd,answer_size_string,20,0)<=0){//I read exacly 20 
+            ERROR(false,NULL);
+            return NULL;
+    }
+    int recieving_data_size=atoi(answer_size_string);
+    char* answer=(char*)calloc(recieving_data_size+3,sizeof(char));
+    int recieved=0;
+    
+    while(recieved<recieving_data_size){
+        int data_to_recieve=min(PART_SIZE,recieving_data_size-recieved);
+        if(recv(client->socket_fd,answer+recieved,data_to_recieve,0)<=0){
+            ERROR(false,NULL);
+            return NULL;
+        }
+        recieved+=data_to_recieve;
+    }
+    return answer;
+}
+char* getNotEmptyWithOutBreakLineLine(struct Client* client){
+    char* command=NULL;
+     size_t line=0;/*I dont know why but making this int will make the socket not accepting stuff I 
+    I even ran a simple server socket and it did the same.I dont know why should it effect the socket but 
+    it is c after all*/
+    int size_of_command;
+    while (!(size_of_command=getline(&command,&line,stdin)-1)){//getlines until line is not empty   
+        changeColor(BLUE);
+        printInput(client);
+        changeColor(RESET);
+    }
+    
+    command[size_of_command]='\0';
+    return command;
+
+}
 void initialize(int argc,char** argv,int * PORT,int* BACK_LOG,char* BACK_UP_PORT,char* BACK_UP_IP,int* PART_SIZE){
     //it will initialize the variables based on the input given to the program
     if(argc==1){ 
@@ -112,7 +174,8 @@ struct Client* acceptClient(int server_socket){
 }
 
 bool handShake(struct Client* client,int PART_SIZE,const char* BACK_UP_PORT,const char* BACK_UP_IP){
-
+    
+    
 
     char message[200]={0};
  
@@ -122,66 +185,171 @@ bool handShake(struct Client* client,int PART_SIZE,const char* BACK_UP_PORT,cons
         ERROR(false,"handshake unsuccessfull");
         return false;
     }
+    if(recv(client->socket_fd,client->path,PATH_MAX,0)<=0){
+        ERROR(false,"error while handshaking");
+        return false;
+    }
+
+    
     return true;
    
 }
 char* getAndSendCommandAndRecieveResult(struct Client* client,int PART_SIZE){
-    char* command=NULL;
     changeColor(BLUE);
-    printf("%s$ ",client->IP);
-    
+    printInput(client);
     changeColor(RESET);
-    size_t line=0;/*I dont know why but making this int will make the socket not accepting stuff I 
-    I even ran a simple server socket and it did the same.I dont know why should it effect the socket but 
-    it is c after all*/
+   
+    
+    char* command=getNotEmptyWithOutBreakLineLine(client);
+    
+    char* result;
+    
+    //it could return NULL when SendMessage and RecieveMessage return 
+    if((CheckForSpecialCommands(command))){
+        result= ExecuteForSpecialCommands(client,command,PART_SIZE);
+        free(command);
+        return result;
 
-    int size_of_command=getline(&command,&line,stdin)-1;
-    
-    command[size_of_command]='\0';
-    
-    
-    int sent=0;
-    
-    //it sends data in parts until all the data is send
-    while(sent<size_of_command){
-        int data_to_send=min(PART_SIZE,size_of_command-sent);
-        if(send(client->socket_fd,command+sent,data_to_send,0)<data_to_send){
-            ERROR(false,NULL);
-            return NULL;
-        }
-        sent+=data_to_send;
+    }else{
+        result= ExecuteForOrdinaryCommands(client,command,PART_SIZE);
+        free(command);
+        return result;
     }
-    char* answer_size_string[20]={0};
-    if(recv(client->socket_fd,answer_size_string,sizeof(answer_size_string),0)<=0){
-            ERROR(false,NULL);
-            return NULL;
-    }
-    
-    int recieving_data_size=atoi(answer_size_string);
-    char* answer=(char*)calloc(recieving_data_size+3,sizeof(char));
-    
-    int recieved=0;
-    while(recieved<recieving_data_size){
-        int data_to_recieve=min(PART_SIZE,recieving_data_size-recieved);
-        if(recv(client->socket_fd,answer+recieved,data_to_recieve,0)<0){
-            ERROR(false,NULL);
-            return NULL;
-        }
-        recieved+=data_to_recieve;
-    }
-    return answer;
-    
-
 
 }
 
+
 void checkAndPrintAnswer(char* answer){
-    if(answer[0]=='1'){
-        changeColor(BLUE);
+    
+
+    
+    int exit_code=(answer[0]-'0')*100+(answer[1]-'0')*10+answer[2]-'0';
+    if(!exit_code){
+        changeColor(PURPLE);
     }else{
         changeColor(RED);
     }
-    printf(answer+sizeof(char));
+    printf("%s\n",answer+3);
     changeColor(RESET);
 }
+int exitCode(char* result){
+    return (result[0]-'0')*100+(result[1]-'0')*10+(result[2]-'0');
+}
+bool CheckForSpecialCommands(char* command){
+    char* temp=(char*)malloc(sizeof(char)*(strlen(command)+2));
+    strcpy(temp,command);
+    while(*temp==' '){
+        temp++;
+    }
+    char* sp;
+    //replacing parts with \0
+    while((sp=strchr(temp,' '))){
+        *sp=0;
+    }
+    
+    if(!strcmp(temp,"cd")||!strcmp(temp,"get_file")||!strcmp(temp,"send_file")){
+        return true;
+        free(temp);
+    }
+    return false;
+}
+char* ExecuteForSpecialCommands(struct Client* client,char * command,int PART_SIZE){
+    char* result=NULL;
+    char* temp=(char*)malloc(sizeof(char)*(strlen(command)+2));
+    strcpy(temp,command);
+    while(*temp==' '){
+        temp++;
+    }
+    char* sp;
+    //replacing parts with \0
+    while((sp=strchr(temp,' '))){
+        *sp=0;
+    }
+    
+    if(!strcmp(temp,"cd")){
+        //
+        if(!sendMessage(client,command,PART_SIZE)){
+            return NULL;
+        }
+        result=recieveMessage(client,PART_SIZE);
+        if(!result){
+            return NULL;
+        }
+        if(exitCode(result)==0){
+            
+            strcpy(client->path,result+3);
+        }
+       
+    }
+    if(!strcmp(temp,"get_file")){
+        
+        if(!sendMessage(client,command,PART_SIZE)){
+            return NULL;
+        }
+        
+        result=recieveMessage(client,PART_SIZE);
+        if(!result){
+            return NULL;
+        }
+        FILE* file=fopen(temp+strlen(temp)+1,"w");
+        if(!file){
+            ERROR(false,"couldnt open file in server side");
+            return NULL;
+        }
+        else{
+            fprintf(file,result+3);
+            fclose(file);   
+        }
+        
+    }
+    if(!strcmp(temp,"send_file")){
+        char* temp_command=malloc(sizeof(char)*(101+strlen(command)));
+        strcpy(temp_command,command);
+        strcat(temp_command," ");
+        FILE* file=fopen(temp+strlen(temp)+1,"r");
 
+        if(!file){
+
+            ERROR(false,"problem opening file on server side");
+        }
+        else{
+            char temp[100]={0};
+            int curr_size=101+strlen(temp_command);
+            while(fgets(temp,sizeof(temp),file)){
+                curr_size+=101;
+                temp_command=(char*)realloc(temp_command,curr_size*sizeof(char*));
+                strcat(temp_command,temp);
+            }
+            fclose(file);   
+        }
+
+
+        if(!sendMessage(client,temp_command,PART_SIZE)){
+            return NULL;
+        }
+        
+        result=recieveMessage(client,PART_SIZE);
+        if(!result){
+            return NULL;
+        }
+
+        
+    }
+    free(temp);
+    return result;
+    
+    
+
+
+
+}
+char* ExecuteForOrdinaryCommands(struct Client* client,char * command,int PART_SIZE)
+{
+    if(!sendMessage(client,command,PART_SIZE)){
+        return NULL;
+    }
+
+    return recieveMessage(client,PART_SIZE);
+    
+
+}

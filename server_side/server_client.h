@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <math.h>
+#include <unistd.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -11,6 +12,9 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <limits.h>
+#include <signal.h>
 
 #include "helper.h"
 
@@ -21,6 +25,7 @@ struct Client{
     bool accept_successful;
     char* IP[INET_ADDRSTRLEN];
     int socket_fd;
+    char path[PATH_MAX];
     
 
 };
@@ -41,4 +46,13 @@ void checkCommandAndExecute(char* command);
 char* getAndSendCommandAndRecieveResult(struct Client* client,int PART_SIZE);
 
 void checkAndPrintAnswer(char* answer);
+bool sendMessage(struct Client* client,char* message,int PART_SIZE);
+char* recieveMessage(struct Client* client,int PART_SIZE);
+char* getNotEmptyWithOutBreakLineLine(struct Client* client);
+void printInput(struct Client * client);
+int exitCode(char* result);
+bool CheckForSpecialCommands(char* command);
+char* ExecuteForSpecialCommands(struct Client* client,char * command,int PART_SIZE);
+char* ExecuteForOrdinaryCommands(struct Client* client,char * command,int PART_SIZE);
+
 #endif

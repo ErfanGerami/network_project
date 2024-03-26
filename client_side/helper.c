@@ -23,3 +23,11 @@ void ERROR(bool _exit,const char* message){
 }
 
 int min(int a,int b){return a>b?b:a;}
+bool isNumber(char* string){
+    for(int i=0;i<strlen(string);i++){
+        if(i>'9' || i<'0'){
+            return false;
+        }
+    }
+    return true;
+}
