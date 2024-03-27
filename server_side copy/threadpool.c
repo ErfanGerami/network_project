@@ -1,8 +1,9 @@
 #include "threadpool.h"
 
 void initThreadPool(struct ThreadPool* pool,int worker_num,void*(*func)(void*)){
-    pthread_rwlock_init(&pool->lock, NULL);
-    pthread_cond_init(&pool->cond, NULL);   
+      
+    pthread_mutex_init(&pool->queue_lock, NULL);
+    pthread_cond_init(&pool->queue_cond, NULL);
     pool->thread_IDs=(pthread_t*)malloc(sizeof(pthread_t)*worker_num);
     pool->thread_num=worker_num;
     initQueue(&pool->queue);
@@ -18,26 +19,28 @@ void initThreadPool(struct ThreadPool* pool,int worker_num,void*(*func)(void*)){
 }
 
 void AddJob(struct ThreadPool* pool,void* job){
-    pthread_rwlock_wrlock(&pool->lock);
-    enqueue(&pool->queue,job);
-    
+    pthread_mutex_lock(&pool->queue_lock); 
 
-    pthread_rwlock_unlock(&pool->lock);
+    enqueue(&pool->queue, job);
+    pthread_mutex_unlock(&pool->queue_lock);
+    pthread_cond_signal(&pool->queue_cond); 
+    printf("wfew\n");
 }
 
 void* pickJob(void* inpp) {
     struct Input* inp = (struct Input*)inpp;
     while (true) {
-        pthread_rwlock_rdlock(&inp->pool->lock);
+        pthread_mutex_lock(&inp->pool->queue_lock); 
 
-        while (!inp->pool->queue.size) {
-            // Wait for the queue to become non-empty
-            pthread_cond_wait(&inp->pool->cond, &inp->pool->lock);
+        while (!(&inp->pool->queue)->size) {
+    printQueue(&inp->pool->queue);
+            // waiting for the queue to become non empty
+            pthread_cond_wait(&inp->pool->queue_cond, &inp->pool->queue_lock);
         }
-        pthread_rwlock_unlock(&inp->pool->lock);
-        pthread_rwlock_wrlock(&inp->pool->lock);
+
         void* job = dequeue(&inp->pool->queue);
-        pthread_rwlock_unlock(&inp->pool->lock);
+        pthread_mutex_unlock(&inp->pool->queue_lock); 
+
         inp->func(job);
     }
 }

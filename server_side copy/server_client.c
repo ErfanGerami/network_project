@@ -1,11 +1,13 @@
 
 #include "server_client.h"
+struct Client* clients[60];//max is set to be 60
+int client_cnt=0;
+pthread_rwlock_t lock_for_clients;
+pthread_cond_t condition_var_for_clients;
 void printInput(struct Client * client){
     //prints client ip along with the path 
     printf("%s@:%s$ ",client->IP,client->path);
 }
-
-
 bool sendMessage(struct Client* client,char* message,int PART_SIZE){
     //sends the lenght of the message in 20 chars so other side knows how much should it read 
     //then sends the actual data  and if everything goes as expected it returns true otherwise false
@@ -57,6 +59,7 @@ char* recieveMessage(struct Client* client,int PART_SIZE){
     return answer;
 }
 char* getNotEmptyWithOutBreakLineLine(struct Client* client){
+    printInput(client);
     char* command=NULL;
      size_t line=0;/*I dont know why but making this int will make the socket not accepting stuff I 
     I even ran a simple server socket and it did the same.I dont know why should it effect the socket but 
@@ -72,7 +75,7 @@ char* getNotEmptyWithOutBreakLineLine(struct Client* client){
     return command;
 
 }
-void initialize(int argc,char** argv,int * PORT,int* BACK_LOG,char* BACK_UP_PORT,char* BACK_UP_IP,int* PART_SIZE){
+void initialize(int argc,char** argv,int * PORT,int* BACK_LOG,char* BACK_UP_PORT,char* BACK_UP_IP,int* PART_SIZE,int* THREAD_NUM){
     //it will initialize the variables based on the input given to the program
     if(argc==1){ 
         ERROR(true,"the min requirement to run the program is to determin the port(use -h for more info)");
@@ -119,6 +122,14 @@ void initialize(int argc,char** argv,int * PORT,int* BACK_LOG,char* BACK_UP_PORT
                 ERROR(true,"nothing came after -bi");
             }else{
                 strcpy(BACK_UP_IP,argv[i+1]);
+                i++;
+            }
+        }
+        if(!strcmp(argv[i],"-t")){
+            if(argc==i+1){//it means nothing is after that
+                ERROR(true,"nothing came after -t");
+            }else{
+                *THREAD_NUM=atoi(argv[i+1]);
                 i++;
             }
         }
@@ -368,5 +379,64 @@ char* ExecuteForOrdinaryCommands(struct Client* client,char * command,int PART_S
 
     return recieveMessage(client,PART_SIZE);
     
+
+}
+
+
+struct Command* createCommand(struct Client* client,char* Command,int PART_SIZE){
+    struct Command* full_command=(struct Command*)malloc(sizeof(struct Command*));
+    full_command->client=client;
+    full_command->command=Command;
+    full_command->PART_SIZE=PART_SIZE;
+    return full_command;
+
+
+}
+void* runIncommingCommands(void * _command ){
+    char* result;
+    struct Command* command=(struct Command*)_command;
+    if((CheckForSpecialCommands(command->command))){
+        result= ExecuteForSpecialCommands(command->client,command->command,command->PART_SIZE);
+        
+
+    }else{
+        result= ExecuteForOrdinaryCommands(command->client,command->command,command->PART_SIZE);
+        
+    }
+
+    if(!result){
+        clients[command->client->id]=NULL;
+        free(command->client);
+        free(_command);
+        free(command);
+        
+    }else{
+        command->client->result=result;
+    }
+    return NULL;
+
+}
+void* keepAccepting(void * _input){
+    
+    struct KeepAcceptingInput* input=(struct KeepAcceptingInput*)_input;
+    while(1){
+        struct Client* client=acceptClient(input->server->socket_fd);
+        if(!client->accept_successful){
+            free(client);//the memory is dynamicly allocated so it shoul be deallocated
+
+            continue;
+        }
+        if(!handShake(client,input->PART_SIZE,input->BACK_UP_PORT,input->BACK_UP_IP)){
+            continue;
+        }
+        pthread_mutex_lock(&lock_for_clients);
+        client->id=client_cnt;
+        clients[client_cnt]=client;
+        client_cnt++;
+        pthread_mutex_unlock(&lock_for_clients); 
+        pthread_cond_signal(&condition_var_for_clients);
+
+        
+    }
 
 }

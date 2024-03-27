@@ -11,8 +11,8 @@ void* print(void* message){
 int  main(){
     struct ThreadPool* pool=(struct ThreadPool*)malloc(sizeof(struct ThreadPool));
     char* message="salam";
-    initThreadPool(pool,2,print);
-    for(int i=0;i<4;i++){
+    initThreadPool(pool,10,print);
+    for(int i=0;i<200;i++){
         
        char c[10];
         strcpy(c,message);

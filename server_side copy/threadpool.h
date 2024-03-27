@@ -7,8 +7,8 @@ struct ThreadPool{
     pthread_t* thread_IDs;
     int thread_num;
     struct Queue queue;
-    pthread_rwlock_t lock;
-    pthread_cond_t cond;
+    pthread_mutex_t queue_lock; 
+    pthread_cond_t queue_cond;
     
 
 };

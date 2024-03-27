@@ -15,7 +15,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <signal.h>
-
+#include "threadpool.h"
 #include "helper.h"
 
 //structs------------------------------------
@@ -26,6 +26,8 @@ struct Client{
     char* IP[INET_ADDRSTRLEN];
     int socket_fd;
     char path[PATH_MAX];
+    char* result;
+    int id;
     
 
 };
@@ -33,11 +35,22 @@ struct Server{
     struct sockaddr_in addr;
     int socket_fd;
 };
-
+struct Command{
+    struct Client* client;
+    char* command;
+    int PART_SIZE;
+};
+struct KeepAcceptingInput{
+    struct Server* server;
+    int PART_SIZE;
+    char BACK_UP_IP[20];
+    char BACK_UP_PORT[10];
+    
+};
 //functions----------------------------------------
 
 
-void initialize(int argc,char** argv,int * PORT,int* BACK_LOG,char* BACK_UP_PORT,char* BACK_UP_IP,int* PART_SIZE);
+void initialize(int argc,char** argv,int * PORT,int* BACK_LOG,char* BACK_UP_PORT,char* BACK_UP_IP,int* PART_SIZE,int* THREAD_NUM);
 struct serve* set_up_server(int PORT,int BACK_LOG);
 struct Client* acceptClient(int server_socket);
 bool handShake(struct Client* client,int PART_SIZE,const char* BACK_UP_PORT,const char* BACK_UP_IP);
@@ -54,5 +67,7 @@ int exitCode(char* result);
 bool CheckForSpecialCommands(char* command);
 char* ExecuteForSpecialCommands(struct Client* client,char * command,int PART_SIZE);
 char* ExecuteForOrdinaryCommands(struct Client* client,char * command,int PART_SIZE);
-
+void* keepAccepting(void * _input);
+void* runIncommingCommands(void * _command );
+struct Command* createCommand(struct Client* client,char* Command,int PART_SIZE);
 #endif

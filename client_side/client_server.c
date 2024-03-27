@@ -89,7 +89,6 @@ bool handShake(struct Client* client,int* PART_SIZE,int* BACK_UP_PORT, char* BAC
     if(!sendMessage(client,cwd,PART_SIZE)){
         ERROR(false,"error while handshaking");
         return false;
-        pthread_create()
         
     }
 
