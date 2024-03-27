@@ -6,7 +6,7 @@ char* IP="127.0.0.1";
 int BACK_UP_PORT=0;
 char* BACK_UP_IP="UNSET";
 int PART_SIZE;
-const int MAX_TRY;
+const int MAX_TRY=5;
 char path[PATH_MAX];
 
 int main(int argc,char** argv){
@@ -15,10 +15,10 @@ int main(int argc,char** argv){
     struct Client* client;
     while(!(client=set_up_client(PORT,IP))&& try_cnt<MAX_TRY){
         try_cnt++;
-        printf("not connected.");
-        printf("trying again...");
+        printf("not connected.\n");
+        printf("trying again...\n");
     }
-    if(try_cnt>MAX_TRY){
+    if(try_cnt>=MAX_TRY){
         ERROR(true,"failed to connect");
     }
     handShake(client,&PART_SIZE,&BACK_UP_PORT,BACK_UP_IP);

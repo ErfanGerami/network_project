@@ -1,5 +1,8 @@
 #include "client_server.h"
-bool sendMessage(struct Client* client,char* message,int PART_SIZE){    
+#include <pthread.h>
+bool sendMessage(struct Client* client,char* message,int PART_SIZE){  
+     //sends the lenght of the message in 20 chars so other side knows how much should it read 
+    //then sends the actual data  and if everything goes as expected it returns true otherwise false  
     char size_of_result[21]={0};
     sprintf(size_of_result,"%d",strlen(message));
     //the size of number should be exactly 20
@@ -24,6 +27,8 @@ bool sendMessage(struct Client* client,char* message,int PART_SIZE){
 
 }
 char* recieveMessage(struct Client* client,int PART_SIZE){
+    //firsts recieve the size of data in 20 chars and then recieves the actual data and return it 
+    //if anything goes wrong it will return NUL
 
 
     char* answer_size_string[21]={0};
@@ -81,11 +86,13 @@ bool handShake(struct Client* client,int* PART_SIZE,int* BACK_UP_PORT, char* BAC
     //sending path-----------------------------------------
     char cwd[PATH_MAX];
     getcwd(cwd, sizeof(cwd));
-    if(send(client->socket_fd,cwd,sizeof(cwd),0)<=0){
+    if(!sendMessage(client,cwd,PART_SIZE)){
         ERROR(false,"error while handshaking");
         return false;
+        pthread_create()
+        
     }
-    
+
 
 
     return true;
