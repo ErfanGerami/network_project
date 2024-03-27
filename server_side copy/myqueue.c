@@ -1,3 +1,13 @@
+#include "myqueue.h"
+void initQueue(struct Queue* q){
+    q->arr=(void**)malloc(sizeof(void*)*INIT_CAPACITY);
+    q->capacity=INIT_CAPACITY;
+    q->size=0;
+    q->front=0;
+
+    
+
+}
 void enqueue(struct Queue* q,void * data){
     if(q->capacity==q->size){
         void** temp=(void**)malloc(sizeof(void*)*q->capacity*2);

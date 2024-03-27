@@ -12,14 +12,14 @@ int  main(){
     struct ThreadPool* pool=(struct ThreadPool*)malloc(sizeof(struct ThreadPool));
     char* message="salam";
     initThreadPool(pool,2,print);
-    
-    for(int i=0;i<10;i++){
-        //printf("%s\n",message);
-        //continue;
+    for(int i=0;i<4;i++){
+        
        char c[10];
         strcpy(c,message);
         AddJob(pool,c);
     }
+
+    
     while(1){}
     
 
