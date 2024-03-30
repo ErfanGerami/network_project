@@ -191,7 +191,7 @@ bool handShake(struct Client* client,int PART_SIZE,const char* BACK_UP_PORT,cons
  
     sprintf(message,"%d %s %s",PART_SIZE,BACK_UP_IP,BACK_UP_PORT);
 
-    if(send(client->socket_fd,message,strlen(message),0)<=0){
+    if(!sendMessage(client,message,400)){
         ERROR(false,"handshake unsuccessfull");
         return false;
     }

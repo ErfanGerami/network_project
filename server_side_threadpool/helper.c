@@ -23,6 +23,15 @@ void ERROR(bool _exit,const char* message){
 }
 
 int min(int a,int b){return a>b?b:a;}
-char* nexPart(char* inp){
-    return inp+strlen(inp)+1;
+char* nexPart(char* inp,char* end){
+    char* temp=inp+strlen(inp)+1;
+    if(temp>=end){
+        return NULL;
+    }else{
+        while(*temp==' '){
+            temp++;
+        }
+        return temp; 
+    }
+   
 }

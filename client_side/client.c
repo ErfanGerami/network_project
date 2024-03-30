@@ -1,7 +1,7 @@
 #include "client_server.h"
 
 
-int PORT=3000;
+int PORT=3003;
 char* IP="127.0.0.1";
 int BACK_UP_PORT=0;
 char* BACK_UP_IP="UNSET";
@@ -10,12 +10,14 @@ const int MAX_TRY=5;
 char path[PATH_MAX];
 
 int main(int argc,char** argv){
-    PORT=atoi(argv[1]);
+    //PORT=atoi(argv[1]);
+    //IP=argv[1];
+    initialize(argc,argv,&PORT,&IP);
     int try_cnt=0;
     struct Client* client;
     while(!(client=set_up_client(PORT,IP))&& try_cnt<MAX_TRY){
         try_cnt++;
-        printf("not connected.\n");
+	    printf("trying to connect to %s:%d\n",IP,PORT);
         printf("trying again...\n");
     }
     if(try_cnt>=MAX_TRY){

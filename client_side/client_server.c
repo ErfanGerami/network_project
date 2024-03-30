@@ -3,6 +3,7 @@
 bool sendMessage(struct Client* client,char* message,int PART_SIZE){  
      //sends the lenght of the message in 20 chars so other side knows how much should it read 
     //then sends the actual data  and if everything goes as expected it returns true otherwise false
+    
     printf("%s\n",message);  
     char size_of_result[21]={0};
     sprintf(size_of_result,"%d",strlen(message));
@@ -243,4 +244,29 @@ char* CheckForSpecialCommands(struct Client* client,char * command){
 
 
 
+}
+void initialize(int argc,char** argv,int * PORT,char* IP){
+    for(int i=1;i<argc;i++){
+        //port-------------------------
+        if(!strcmp(argv[i],"-p")){
+            if(argc==i+1){//it means nothing is after that
+                ERROR(true,"nothing came after -p");
+            }else{
+                *PORT=atoi(argv[i+1]);
+                i++;
+            }
+        }
+        //ip-------------------------
+        if(!strcmp(argv[i],"-i")){
+            if(argc==i+1){//it means nothing is after that
+                ERROR(true,"nothing came after -p");
+            }else{
+                *IP=(argv[i+1]);
+                i++;
+            }
+        }
+        
+       
+        
+    }
 }

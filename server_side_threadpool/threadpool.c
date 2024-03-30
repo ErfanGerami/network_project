@@ -43,3 +43,9 @@ void* pickJob(void* inpp) {
         inp->func(job);
     }
 }
+void terminateAll(struct ThreadPool* pool){
+    for (int i=0;i<pool->thread_num;i++){
+        pthread_cancel(pool->thread_IDs[i]);
+        pthread_join(pool->thread_IDs[i], NULL);
+    }
+}

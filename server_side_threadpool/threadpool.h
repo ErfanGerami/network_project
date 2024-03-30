@@ -20,5 +20,7 @@ void* pickJob(void* inpp);
 void initThreadPool(struct ThreadPool* pool,int worker_num,void*(*func)(void*));
 
 void AddJob(struct ThreadPool* pool,void* job);
+void terminateAll(struct ThreadPool* pool);
+
 
 #endif

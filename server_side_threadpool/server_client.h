@@ -76,4 +76,6 @@ bool checkCommandIsInternal(char* command);
 bool executeInternalCommands(char* command,int* current_client);
 bool CheckResultNeedingCommand(char* command);
 void delete_client(struct Client* client);
+bool checkForAggregateCommands(char* command);
+void excuteAggregateCommand(char* command,struct ThreadPool* pool,int PART_SIZE);
 #endif

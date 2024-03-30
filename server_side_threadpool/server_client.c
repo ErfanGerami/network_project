@@ -87,9 +87,9 @@ char* getNotEmptyWithOutBreakLineLine(struct Client* client){
 }
 void initialize(int argc,char** argv,int * PORT,int* BACK_LOG,char* BACK_UP_PORT,char* BACK_UP_IP,int* PART_SIZE,int* THREAD_NUM){
     //it will initialize the variables based on the input given to the program
-    if(argc==1){ 
+    /*if(argc==1){ 
         ERROR(true,"the min requirement to run the program is to determin the port(use -h for more info)");
-    }
+    }*/
     for(int i=1;i<argc;i++){
         //port-------------------------
         if(!strcmp(argv[i],"-p")){
@@ -282,9 +282,11 @@ bool CheckForSpecialCommands(char* command){
     char* sp;
     while((sp=strchr(temp,' '))){
         *sp=0;
-    }
     
-    if(!strcmp(temp,"cd")||!strcmp(temp,"get_file")||!strcmp(temp,"send_file")){
+    }
+
+    
+    if(!strcmp(temp,"cd")||!strcmp(temp,"get_file")||!strcmp(temp,"send_file")||!strcmp(temp,"sendall")){
         return true;
         free(temp);
     }
@@ -295,6 +297,7 @@ char* ExecuteForSpecialCommands(struct Client* client,char * command,int PART_SI
     char* result=NULL;
     char* temp=(char*)malloc(sizeof(char)*(strlen(command)+2));
     strcpy(temp,command);
+    char* end_of_command=temp+strlen(temp);
     while(*temp==' '){
         temp++;
     }
@@ -302,7 +305,31 @@ char* ExecuteForSpecialCommands(struct Client* client,char * command,int PART_SI
     while((sp=strchr(temp,' '))){
         *sp=0;
     }
-    
+    if(!strcmp(temp,"sendall")){
+        char* next_part=nexPart(temp,end_of_command);
+        if(!next_part){
+            if(show_errors){
+                ERROR(false,"not valid command");
+            }
+            return NULL;
+        }
+        
+        for(int i=0;i<MAX_CLIENTS;i++){
+            pthread_mutex_lock(&lock_for_clients);
+
+            if(clients[i] && !clients[i]->deleted){
+                ExecuteForSpecialCommands(clients[i],command+(next_part-temp),PART_SIZE,show_errors);
+            }
+            pthread_mutex_unlock(&lock_for_clients);
+
+        }
+        char* result=(char*)malloc(sizeof(char)*(5));
+        strcpy(result,"000");
+        return result;
+
+
+    }
+
     if(!strcmp(temp,"cd")){
         
         if(!sendMessage(client,command,PART_SIZE,show_errors)){
@@ -479,13 +506,13 @@ bool executeInternalCommands(char* command,int* current_client){
     }
 
     if(!strcmp(command,"switch")){
-        char* next_part=nexPart(command);
+        char* next_part=nexPart(command,end_of_command);
        // printf("%s\n",nexPart);
-        if(next_part>end_of_command){
+        if(!next_part){
             ERROR(false,"command is not correct");
             return false;
         }
-        int intended_client=atoi(nexPart(command));
+        int intended_client=atoi(nexPart(command,end_of_command));
         if(clients[intended_client]){
             *current_client=intended_client;
 
@@ -512,13 +539,13 @@ bool executeInternalCommands(char* command,int* current_client){
         return true;
     }
     if(!strcmp(command,"result")){
-        char* next_part=nexPart(command);
+        char* next_part=nexPart(command,end_of_command);
        // printf("%s\n",nexPart);
-        if(next_part>end_of_command){
+        if(!next_part){
             ERROR(false,"command is not correct");
             return false;
         }
-        int intended_client=atoi(nexPart(command));
+        int intended_client=atoi(nexPart(command,end_of_command));
         
         if(clients[intended_client]){
             if(!clients[intended_client]->result){
@@ -546,6 +573,7 @@ bool executeInternalCommands(char* command,int* current_client){
 bool CheckResultNeedingCommand(char* command){
     char* temp=(char*)malloc(sizeof(char)*(strlen(command)+2));
     strcpy(temp,command);
+    char* end_of_command=temp+strlen(temp);
     while(*temp==' '){
         temp++;
     }
@@ -557,6 +585,10 @@ bool CheckResultNeedingCommand(char* command){
     if(!strcmp(temp,"cd")){
         return true;
         free(temp);
+    }
+    if(!strcmp(temp,"sendall")){
+        temp=nexPart(temp,end_of_command);
+        return (temp && temp[0]=='c' && temp[1]=='d');
     }
     return false;
 
@@ -582,5 +614,50 @@ void delete_client(struct Client* client){
     pthread_mutex_unlock(&lock_for_clients);
 
 }
+bool checkForAggregateCommands(char* command){
+    char* temp=(char*)malloc(sizeof(char)*(strlen(command)+2));
+    char* end_of_command=command+strlen(command);
+    strcpy(temp,command);
+    while(*temp==' '){
+        temp++;
+    }
+    char* sp;
+    while((sp=strchr(temp,' '))){
+        *sp=0;
+    }
+    
+    if(!strcmp(temp,"sendall")){
+        return true;
+        free(temp);
+    }
+    return false;
+}
+void excuteAggregateCommand(char* command,struct ThreadPool* pool,int PART_SIZE){
+    char* end_of_command=command+strlen(command);
+    char* temp=command;
+    
+    while((temp=strchr(temp,' '))!=NULL){
+        *temp=0;
+    }
+
+    if(!strcmp(command,"sendall")){
+        char* temp=nexPart(command,end_of_command);
+        for(int i=0;i<MAX_CLIENTS;i++){
+            pthread_mutex_lock(&lock_for_clients);
+
+            if(clients[i] && !clients[i]->deleted){
+                struct Command* full_command=createCommand(clients[i],temp,PART_SIZE);
+                AddJob(pool,full_command);                
+            }
+            pthread_mutex_unlock(&lock_for_clients);
+
+
+        }
+        
+    }
+    
+}
+
+
 
 

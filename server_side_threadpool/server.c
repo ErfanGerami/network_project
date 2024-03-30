@@ -4,7 +4,7 @@
 #include "helper.h"
 #define  MAX_CLIENTS 60
 
-int PORT=3000;
+int PORT=3007;
 int PART_SIZE=1024;
 int BACK_LOG=3;
 int THREAD_NUM=5;
@@ -43,7 +43,7 @@ int main(int argc,char** argv){
     //-------------------------------------------------
     //initializing--------------------------------------------
     initThreadPool(pool,THREAD_NUM,runIncommingCommands);
-    initialize(argc,argv,&PORT,&BACK_LOG,&BACK_UP_PORT,&BACK_UP_IP,&PART_SIZE,THREAD_NUM);
+    initialize(argc,argv,&PORT,&BACK_LOG,&BACK_UP_PORT,&BACK_UP_IP,&PART_SIZE,&THREAD_NUM);
     pthread_mutex_init(&lock_for_clients, NULL);
     pthread_cond_init(&condition_var_for_clients,NULL);
 
@@ -115,15 +115,17 @@ int main(int argc,char** argv){
             }
             if(!result){
                 pthread_mutex_lock(&lock_for_clients);
-                free(clients[current_client]);
-                clients[current_client]=NULL;
+                delete_client(clients[current_client]);
                 pthread_mutex_unlock(&lock_for_clients); 
             }
         }
         else{
-            struct Command* full_command=createCommand(clients[current_client],command,PART_SIZE);
-            
-            AddJob(pool,full_command);
+            if(checkForAggregateCommands(command)){
+                excuteAggregateCommand(command,pool,PART_SIZE);
+            }else{
+                struct Command* full_command=createCommand(clients[current_client],command,PART_SIZE);
+                AddJob(pool,full_command);
+            }
         }
         
     
@@ -137,6 +139,10 @@ int main(int argc,char** argv){
 
        
     free(input);
+    //of cource we never reach here
+    pthread_mutex_destroy(&lock_for_clients);
+    terminateAll(pool);
+    
     
 
 }

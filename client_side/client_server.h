@@ -26,6 +26,7 @@ struct Client{
     char path[PATH_MAX];
     
 };
+void initialize(int argc,char** argv,int * PORT,char* IP);
 
 struct Client*  set_up_client(int PORT,char* IP);
 bool handShake(struct Client* client,int* PART_SIZE,int* BACK_UP_PORT, char* BACK_UP_IP);
