@@ -2,13 +2,16 @@
 
 #include "server_client.h"
 #include "helper.h"
+#define  MAX_CLIENTS 60
+
 int PORT=3000;
 int PART_SIZE=1024;
 int BACK_LOG=3;
 int THREAD_NUM=5;
 char* BACK_UP_PORT="UNSET";//set to 0 for unset
 char* BACK_UP_IP="NOTSET";//set to UNSET for unset
-extern struct Client* clients[60];//max is set to be 60
+
+extern struct Client* clients[MAX_CLIENTS];//max is set to be 60
 extern int client_cnt;
 extern pthread_mutex_t lock_for_clients;
 extern pthread_cond_t condition_var_for_clients;
@@ -56,19 +59,82 @@ int main(int argc,char** argv){
 
     printf("waiting for clients to connect\n");
 
-    pthread_mutex_lock(&lock_for_clients);
-    if(!client_cnt)
-        pthread_cond_wait(&condition_var_for_clients,&lock_for_clients);
+    //pthread_mutex_lock(&lock_for_clients);
+    pthread_cond_wait(&condition_var_for_clients,&lock_for_clients);
     pthread_mutex_unlock(&lock_for_clients);
 
     while(true){
+        pthread_mutex_lock(&lock_for_clients);
+        if(client_cnt==0){
+            printf( "efwef\n");
+            pthread_mutex_unlock(&lock_for_clients);
+            char* command=getNotEmptyWithOutBreakLineLine(NULL);
+            if(checkCommandIsInternal(command)){
+                executeInternalCommands(command,&current_client);
+            }else{
+                ERROR(false,"command is not internal");
+            }
+            continue;
+
+        }else{
+            pthread_mutex_unlock(&lock_for_clients);
+
+        }
+        pthread_mutex_lock(&lock_for_clients); 
+        if(!clients[current_client] || clients[current_client]->deleted ){
+
+
+            ERROR(false,"the client does not exist anymore(but you can see the last unseen result)");
+            for(int i=0;i<MAX_CLIENTS;i++){
+                if(clients[i]&& !clients[i]->deleted ){
+                    current_client=i;
+                    printf("%d",i);
+                    printf("switched to other clients\n");
+                    break;
+                }
+            }
+            pthread_mutex_unlock(&lock_for_clients);
+            continue;
+        }       
+        pthread_mutex_unlock(&lock_for_clients);
         //getting command and answer in while loop
         char* command=getNotEmptyWithOutBreakLineLine(clients[current_client]);
         
-        struct Command* full_command=createCommand(clients[current_client],command,PART_SIZE);
+        //running commmand-----------------------------------
+        #pragma region running_command
+        if(checkCommandIsInternal(command)){
+            executeInternalCommands(command,&current_client);
+        }else if(CheckResultNeedingCommand(command)){
+            char* result=NULL;
+            if((CheckForSpecialCommands(command))){
+                result= ExecuteForSpecialCommands(clients[current_client],command,PART_SIZE,true);
+        
+            }else{
+                result= ExecuteForOrdinaryCommands(clients[current_client],command,PART_SIZE,true);
+        
+            }
+            if(!result){
+                pthread_mutex_lock(&lock_for_clients);
+                free(clients[current_client]);
+                clients[current_client]=NULL;
+                pthread_mutex_unlock(&lock_for_clients); 
+            }
+        }
+        else{
+            struct Command* full_command=createCommand(clients[current_client],command,PART_SIZE);
+            
+            AddJob(pool,full_command);
+        }
+        
+    
+        #pragma endregion
 
-        AddJob(pool,full_command);
+        
+
+
+
     }
+
        
     free(input);
     

@@ -2,7 +2,8 @@
 #include <pthread.h>
 bool sendMessage(struct Client* client,char* message,int PART_SIZE){  
      //sends the lenght of the message in 20 chars so other side knows how much should it read 
-    //then sends the actual data  and if everything goes as expected it returns true otherwise false  
+    //then sends the actual data  and if everything goes as expected it returns true otherwise false
+    printf("%s\n",message);  
     char size_of_result[21]={0};
     sprintf(size_of_result,"%d",strlen(message));
     //the size of number should be exactly 20
@@ -11,9 +12,9 @@ bool sendMessage(struct Client* client,char* message,int PART_SIZE){
         ERROR(false,"error while sending size");
         return false;
     }
+    printf("%s %d",message,strlen(message));
     int size_of_message=strlen(message);
     int sent=0;
-    
     //it sends data in parts until all the data is send
     while(sent<size_of_message){
         int data_to_send=min(PART_SIZE,size_of_message-sent);
@@ -39,7 +40,6 @@ char* recieveMessage(struct Client* client,int PART_SIZE){
     int recieving_data_size=atoi(answer_size_string);
     char* answer=(char*)calloc(recieving_data_size+3,sizeof(char));
     int recieved=0;
-    
     while(recieved<recieving_data_size){
         int data_to_recieve=min(PART_SIZE,recieving_data_size-recieved);
         if(recv(client->socket_fd,answer+recieved,data_to_recieve,0)<=0){
@@ -48,6 +48,7 @@ char* recieveMessage(struct Client* client,int PART_SIZE){
         }
         recieved+=data_to_recieve;
     }
+    printf("erferfr\n");
     return answer;
 }
 struct Client*  set_up_client(int PORT,char* IP){
@@ -73,8 +74,8 @@ struct Client*  set_up_client(int PORT,char* IP){
 }
 bool handShake(struct Client* client,int* PART_SIZE,int* BACK_UP_PORT, char* BACK_UP_IP){
     //recieving rules-----------------------------
-    char buffer[200];
-    if(recv(client->socket_fd,buffer,sizeof(buffer),0)<=0){
+    char* buffer;
+    if(!(buffer=recieveMessage(client,400))){
         ERROR(false,"error while handshaking");
         return false;
     }
@@ -86,7 +87,8 @@ bool handShake(struct Client* client,int* PART_SIZE,int* BACK_UP_PORT, char* BAC
     //sending path-----------------------------------------
     char cwd[PATH_MAX];
     getcwd(cwd, sizeof(cwd));
-    if(!sendMessage(client,cwd,PART_SIZE)){
+  
+    if(!sendMessage(client,cwd,*PART_SIZE)){
         ERROR(false,"error while handshaking");
         return false;
         

@@ -24,7 +24,6 @@ int main(int argc,char** argv){
     handShake(client,&PART_SIZE,&BACK_UP_PORT,BACK_UP_IP);
 
     while(true){
-
         if(!getAndRunCommand(client,PART_SIZE)){
             return 1;
         }

@@ -19,4 +19,6 @@
 void changeColor(const char* color);
 void ERROR(bool _exit,const char* message);
 int min(int a,int b);
+char* nexPart(char* inp);
+
 #endif

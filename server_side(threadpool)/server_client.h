@@ -18,6 +18,7 @@
 #include "threadpool.h"
 #include "helper.h"
 
+
 //structs------------------------------------
 struct Client{
     struct sockaddr_in addr;
@@ -28,6 +29,7 @@ struct Client{
     char path[PATH_MAX];
     char* result;
     int id;
+    bool deleted;
     
 
 };
@@ -59,15 +61,19 @@ void checkCommandAndExecute(char* command);
 char* getAndSendCommandAndRecieveResult(struct Client* client,int PART_SIZE);
 
 void checkAndPrintAnswer(char* answer);
-bool sendMessage(struct Client* client,char* message,int PART_SIZE);
-char* recieveMessage(struct Client* client,int PART_SIZE);
+bool sendMessage(struct Client* client,char* message,int PART_SIZE,bool show_errors);
+char* recieveMessage(struct Client* client,int PART_SIZE,bool show_errors);
 char* getNotEmptyWithOutBreakLineLine(struct Client* client);
 void printInput(struct Client * client);
 int exitCode(char* result);
 bool CheckForSpecialCommands(char* command);
-char* ExecuteForSpecialCommands(struct Client* client,char * command,int PART_SIZE);
-char* ExecuteForOrdinaryCommands(struct Client* client,char * command,int PART_SIZE);
+char* ExecuteForSpecialCommands(struct Client* client,char * command,int PART_SIZE,bool show_errors);
+char* ExecuteForOrdinaryCommands(struct Client* client,char * command,int PART_SIZE,bool show_errors);
 void* keepAccepting(void * _input);
 void* runIncommingCommands(void * _command );
 struct Command* createCommand(struct Client* client,char* Command,int PART_SIZE);
+bool checkCommandIsInternal(char* command);
+bool executeInternalCommands(char* command,int* current_client);
+bool CheckResultNeedingCommand(char* command);
+void delete_client(struct Client* client);
 #endif

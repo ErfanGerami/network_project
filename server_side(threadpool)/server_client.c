@@ -1,14 +1,20 @@
 
 #include "server_client.h"
-struct Client* clients[60];//max is set to be 60
+#define  MAX_CLIENTS 60
+
+struct Client* clients[MAX_CLIENTS]={NULL};//max is set to be 60
 int client_cnt=0;
 pthread_rwlock_t lock_for_clients;
 pthread_cond_t condition_var_for_clients;
 void printInput(struct Client * client){
     //prints client ip along with the path 
-    printf("%s@:%s$ ",client->IP,client->path);
+    if(client)
+        printf("(%d),%s@:%s$ ",client->id,client->IP,client->path);
+    else
+        printf("Internalcommands only:");
+
 }
-bool sendMessage(struct Client* client,char* message,int PART_SIZE){
+bool sendMessage(struct Client* client,char* message,int PART_SIZE,bool show_errors){
     //sends the lenght of the message in 20 chars so other side knows how much should it read 
     //then sends the actual data  and if everything goes as expected it returns true otherwise false
     char size_of_result[21]={0};
@@ -17,7 +23,8 @@ bool sendMessage(struct Client* client,char* message,int PART_SIZE){
     //because we have two sends in continous we should specifiy their size
 
     if(send(client->socket_fd,size_of_result,20,0)<=0){
-        ERROR(false,"error while sending size");
+        if(show_errors)
+            ERROR(false,"error while sending size");
         return false;
     }
     int size_of_message=strlen(message);
@@ -27,7 +34,8 @@ bool sendMessage(struct Client* client,char* message,int PART_SIZE){
     while(sent<size_of_message){
         int data_to_send=min(PART_SIZE,size_of_message-sent);
         if(send(client->socket_fd,message+sent,data_to_send,0)<data_to_send){
-            ERROR(false,NULL);
+            if(show_errors)
+                ERROR(false,NULL);
             return false;
         }
         sent+=data_to_send;
@@ -36,13 +44,14 @@ bool sendMessage(struct Client* client,char* message,int PART_SIZE){
     return true;
 
 }
-char* recieveMessage(struct Client* client,int PART_SIZE){
+char* recieveMessage(struct Client* client,int PART_SIZE,bool show_errors){
     //firsts recieve the size of data in 20 chars and then recieves the actual data and return it 
     //if anything goes wrong it will return NULL
     char* answer_size_string[21]={0};
     if(recv(client->socket_fd,answer_size_string,20,0)<=0){//I read exacly 20 
+        if(show_errors)
             ERROR(false,NULL);
-            return NULL;
+        return NULL;
     }
     int recieving_data_size=atoi(answer_size_string);
     char* answer=(char*)calloc(recieving_data_size+3,sizeof(char));
@@ -51,7 +60,8 @@ char* recieveMessage(struct Client* client,int PART_SIZE){
     while(recieved<recieving_data_size){
         int data_to_recieve=min(PART_SIZE,recieving_data_size-recieved);
         if(recv(client->socket_fd,answer+recieved,data_to_recieve,0)<=0){
-            ERROR(false,NULL);
+            if(show_errors)
+                ERROR(false,NULL);
             return NULL;
         }
         recieved+=data_to_recieve;
@@ -198,16 +208,16 @@ bool handShake(struct Client* client,int PART_SIZE,const char* BACK_UP_PORT,cons
     
     //first server sends PART_SIZE BACK_UP_IP BACK_UP_PORT
     //then client sends its path
-    char message[200]={0};
+    char message[401]={0};
  
     sprintf(message,"%d %s %s",PART_SIZE,BACK_UP_IP,BACK_UP_PORT);
 
-    if(send(client->socket_fd,message,strlen(message),0)<=0){
+    if(!sendMessage(client,message,400,true)){
         ERROR(false,"handshake unsuccessfull");
         return false;
     }
     char * temp_path;
-    if(!(temp_path=recieveMessage(client,PART_SIZE))){
+    if(!(temp_path=recieveMessage(client,PART_SIZE,true))){
         ERROR(false,"error while handshaking");
         return false;
     }
@@ -231,12 +241,12 @@ char* getAndSendCommandAndRecieveResult(struct Client* client,int PART_SIZE){
     
     //it could return NULL when SendMessage and RecieveMessage return 
     if((CheckForSpecialCommands(command))){
-        result= ExecuteForSpecialCommands(client,command,PART_SIZE);
+        result= ExecuteForSpecialCommands(client,command,PART_SIZE,false);
         free(command);
         return result;
 
     }else{
-        result= ExecuteForOrdinaryCommands(client,command,PART_SIZE);
+        result= ExecuteForOrdinaryCommands(client,command,PART_SIZE,false);
         free(command);
         return result;
     }
@@ -280,7 +290,7 @@ bool CheckForSpecialCommands(char* command){
     }
     return false;
 }
-char* ExecuteForSpecialCommands(struct Client* client,char * command,int PART_SIZE){
+char* ExecuteForSpecialCommands(struct Client* client,char * command,int PART_SIZE,bool show_errors){
     //execute some commands that should be treated diffrently 
     char* result=NULL;
     char* temp=(char*)malloc(sizeof(char)*(strlen(command)+2));
@@ -295,10 +305,10 @@ char* ExecuteForSpecialCommands(struct Client* client,char * command,int PART_SI
     
     if(!strcmp(temp,"cd")){
         
-        if(!sendMessage(client,command,PART_SIZE)){
+        if(!sendMessage(client,command,PART_SIZE,show_errors)){
             return NULL;
         }
-        result=recieveMessage(client,PART_SIZE);
+        result=recieveMessage(client,PART_SIZE,show_errors);
         if(!result){
             return NULL;
         }
@@ -310,17 +320,17 @@ char* ExecuteForSpecialCommands(struct Client* client,char * command,int PART_SI
     }
     if(!strcmp(temp,"get_file")){
         
-        if(!sendMessage(client,command,PART_SIZE)){
+        if(!sendMessage(client,command,PART_SIZE,show_errors)){
             return NULL;
         }
         
-        result=recieveMessage(client,PART_SIZE);
+        result=recieveMessage(client,PART_SIZE,show_errors);
         if(!result){
             return NULL;
         }
         FILE* file=fopen(temp+strlen(temp)+1,"w");
         if(!file){
-            ERROR(false,"couldnt open file in server side");
+            //ERROR(false,"couldnt open file in server side");
             return NULL;
         }
         else{
@@ -351,11 +361,11 @@ char* ExecuteForSpecialCommands(struct Client* client,char * command,int PART_SI
         }
 
 
-        if(!sendMessage(client,temp_command,PART_SIZE)){
+        if(!sendMessage(client,temp_command,PART_SIZE,show_errors)){
             return NULL;
         }
         
-        result=recieveMessage(client,PART_SIZE);
+        result=recieveMessage(client,PART_SIZE,show_errors);
         if(!result){
             return NULL;
         }
@@ -370,14 +380,14 @@ char* ExecuteForSpecialCommands(struct Client* client,char * command,int PART_SI
 
 
 }
-char* ExecuteForOrdinaryCommands(struct Client* client,char * command,int PART_SIZE)
+char* ExecuteForOrdinaryCommands(struct Client* client,char * command,int PART_SIZE,bool show_errors)
 {
     //execute the ordinary terminal commands 
-    if(!sendMessage(client,command,PART_SIZE)){
+    if(!sendMessage(client,command,PART_SIZE,show_errors)){
         return NULL;
     }
 
-    return recieveMessage(client,PART_SIZE);
+    return recieveMessage(client,PART_SIZE,show_errors);
     
 
 }
@@ -396,19 +406,17 @@ void* runIncommingCommands(void * _command ){
     char* result;
     struct Command* command=(struct Command*)_command;
     if((CheckForSpecialCommands(command->command))){
-        result= ExecuteForSpecialCommands(command->client,command->command,command->PART_SIZE);
+        result= ExecuteForSpecialCommands(command->client,command->command,command->PART_SIZE,false);
         
 
     }else{
-        result= ExecuteForOrdinaryCommands(command->client,command->command,command->PART_SIZE);
+        result= ExecuteForOrdinaryCommands(command->client,command->command,command->PART_SIZE,false);
         
     }
 
     if(!result){
-        clients[command->client->id]=NULL;
-        free(command->client);
-        free(_command);
-        free(command);
+        delete_client(command->client);
+        
         
     }else{
         command->client->result=result;
@@ -430,13 +438,149 @@ void* keepAccepting(void * _input){
             continue;
         }
         pthread_mutex_lock(&lock_for_clients);
-        client->id=client_cnt;
-        clients[client_cnt]=client;
+        int cnt=client_cnt;
+        while(clients[cnt]!=NULL){
+            cnt++;
+        }
+        client->id=cnt;
+        clients[cnt]=client;
         client_cnt++;
+        client->result=NULL;
+        client->deleted=false;
+        pthread_cond_broadcast(&condition_var_for_clients);
         pthread_mutex_unlock(&lock_for_clients); 
-        pthread_cond_signal(&condition_var_for_clients);
 
         
     }
+ 
+}
+
+bool checkCommandIsInternal(char* command){
+    char command_first[100];
+    char* temp;
+    if((temp=strchr(command,' '))!=NULL){
+        *temp=0;
+        strcpy(command_first,command);
+        *temp=' ';
+    }else{
+        strcpy(command_first,command);
+    }
+    if(!strcmp(command_first,"switch")||!strcmp(command_first,"list")||!strcmp(command_first,"result")){
+        return true;
+    }
+    return false;
+}
+
+bool executeInternalCommands(char* command,int* current_client){
+    char* end_of_command=command+strlen(command);
+    char* temp=command;
+    while((temp=strchr(temp,' '))!=NULL){
+        *temp=0;
+    }
+
+    if(!strcmp(command,"switch")){
+        char* next_part=nexPart(command);
+       // printf("%s\n",nexPart);
+        if(next_part>end_of_command){
+            ERROR(false,"command is not correct");
+            return false;
+        }
+        int intended_client=atoi(nexPart(command));
+        if(clients[intended_client]){
+            *current_client=intended_client;
+
+        }else{
+            ERROR(false,"no such client");
+            return false;
+        }
+        
+        return true;
+    }
+    if(!strcmp(command,"list")){
+        for(int i=0;i<MAX_CLIENTS;i++){
+            if(clients[i]!=NULL){
+                if(clients[i]->deleted){
+                    changeColor(RED);
+                }
+                printf("%s(%d)\t",clients[i]->IP,i);
+                changeColor(RESET);
+            }
+
+        }
+
+        printf("\n");
+        return true;
+    }
+    if(!strcmp(command,"result")){
+        char* next_part=nexPart(command);
+       // printf("%s\n",nexPart);
+        if(next_part>end_of_command){
+            ERROR(false,"command is not correct");
+            return false;
+        }
+        int intended_client=atoi(nexPart(command));
+        
+        if(clients[intended_client]){
+            if(!clients[intended_client]->result){
+                
+                checkAndPrintAnswer("001no results to show(the result of the previous command is not yet ready(keep in mind results will erase after each check))");
+                return true;
+            }
+            checkAndPrintAnswer(clients[intended_client]->result);
+            
+            free(clients[intended_client]->result);
+            clients[intended_client]->result=NULL;
+            if(clients[intended_client]->deleted){
+                delete_client(clients[intended_client]);
+            }
+
+        }else{
+            ERROR(false,"no such client");
+            return false;
+        }
+    }
+    return false;
+
 
 }
+bool CheckResultNeedingCommand(char* command){
+    char* temp=(char*)malloc(sizeof(char)*(strlen(command)+2));
+    strcpy(temp,command);
+    while(*temp==' '){
+        temp++;
+    }
+    char* sp;
+    while((sp=strchr(temp,' '))){
+        *sp=0;
+    }
+    
+    if(!strcmp(temp,"cd")){
+        return true;
+        free(temp);
+    }
+    return false;
+
+}
+void delete_client(struct Client* client){
+    //if result==NULL client
+    pthread_mutex_lock(&lock_for_clients);
+    if(client){
+        if(!client->result){
+            clients[client->id]=NULL;
+            if(!client->deleted)//it means the cleint_cnt is decreamented once before
+                client_cnt--;
+            free(client);
+
+        
+        }else{
+            if(!client->deleted)
+                client_cnt--;
+            client->deleted=true;
+        }
+    }   
+    
+    pthread_mutex_unlock(&lock_for_clients);
+
+}
+
+
