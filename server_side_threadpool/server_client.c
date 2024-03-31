@@ -474,6 +474,7 @@ void* keepAccepting(void * _input){
         client_cnt++;
         client->result=NULL;
         client->deleted=false;
+        printf("\a");//to make a sound when a client emerged
         pthread_cond_broadcast(&condition_var_for_clients);
         pthread_mutex_unlock(&lock_for_clients); 
 
