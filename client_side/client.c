@@ -7,7 +7,7 @@
 
 #include "client_server.h"
 
-
+bool DETACH=false;
 int PORT=3003;
 char IP[20]="127.0.0.1";
 int BACK_UP_PORT=0;
@@ -21,9 +21,25 @@ void childSignalHandler(int signo) {
     }
 }
 int main(int argc,char** argv){
-    //PORT=atoi(argv[1]);
-    //IP=argv[1];
-    initialize(argc,argv,&PORT,IP);
+    
+    initialize(argc,argv,&PORT,IP,&DETACH);
+    if(DETACH){
+        //forwardin stdout to /dev/null 
+        //because we dont want the user to see debug messages in terminal
+        freopen("/dev/null", "w", stdout);
+
+        //a part to detach the client from terminal 
+        pid_t pid = fork();
+
+        if (pid < 0) {
+            perror("Error forking");
+            exit(1);
+        } else if (pid > 0) {
+            
+            exit(1);
+        }
+        setsid();
+    }
 
     struct sigaction sa;
     sa.sa_handler = childSignalHandler;
@@ -47,6 +63,9 @@ int main(int argc,char** argv){
     }
     handShake(client,&PART_SIZE,&BACK_UP_PORT,BACK_UP_IP);
     if(client->child_pid==0){//it means we are the child
+        if(DETACH){
+             freopen("/dev/null", "w", stdout);
+        }
         printf("child process created...\n");
         signal(SIGUSR1, childSignalHandler);
         strcpy(IP,BACK_UP_IP);
@@ -54,6 +73,7 @@ int main(int argc,char** argv){
         pause();  
         printf("child process unpaused\n");  
         printf("PART_SIZE:%d BACK_UP_PORT:%d BACK_UP_IP:%s\n",PART_SIZE,BACK_UP_PORT,BACK_UP_IP);
+        
          while(!(client=set_up_client(PORT,IP))&& try_cnt<MAX_TRY){
             try_cnt++;
             printf("trying to connect to %s:%d\n",IP,PORT);

@@ -13,7 +13,6 @@ bool sendMessage(struct Client* client,char* message,int PART_SIZE){
         ERROR(false,"error while sending size");
         return false;
     }
-    printf("%s %d",message,strlen(message));
     int size_of_message=strlen(message);
     int sent=0;
     //it sends data in parts until all the data is send
@@ -256,7 +255,7 @@ char* CheckForSpecialCommands(struct Client* client,char * command){
 
 
 }
-void initialize(int argc,char** argv,int * PORT,char* IP){
+void initialize(int argc,char** argv,int * PORT,char* IP,bool* DETACH){
     for(int i=1;i<argc;i++){
         //port-------------------------
         if(!strcmp(argv[i],"-p")){
@@ -274,9 +273,11 @@ void initialize(int argc,char** argv,int * PORT,char* IP){
             }else{
 
                 strcpy(IP,argv[i+1]);
-                printf("%s\n",IP);
-                i++;
+                    i++;
             }
+        }
+        if(!strcmp(argv[i],"--detach")){
+            *DETACH=true;
         }
         
        

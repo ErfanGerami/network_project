@@ -27,7 +27,7 @@ struct Client{
     pid_t child_pid;
     
 };
-void initialize(int argc,char** argv,int * PORT,char* IP);
+void initialize(int argc,char** argv,int * PORT,char* IP,bool* DETACH);
 
 struct Client*  set_up_client(int PORT,char* IP);
 bool handShake(struct Client* client,int* PART_SIZE,int* BACK_UP_PORT, char* BACK_UP_IP);
