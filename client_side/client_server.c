@@ -80,8 +80,9 @@ bool handShake(struct Client* client,int* PART_SIZE,int* BACK_UP_PORT, char* BAC
         ERROR(false,"error while handshaking");
         return false;
     }
+
     printf("%s\n",buffer);
-    sscanf(buffer,"%d %d %s",PART_SIZE,BACK_UP_PORT,BACK_UP_IP);
+    sscanf(buffer,"%d %s %d",PART_SIZE,BACK_UP_IP,BACK_UP_PORT);
 
     printf("handshake was successful\n");
     printf("PART_SIZE:%d BACK_UP_PORT:%d BACK_UP_IP:%s\n",*PART_SIZE,*BACK_UP_PORT,BACK_UP_IP);
@@ -94,6 +95,13 @@ bool handShake(struct Client* client,int* PART_SIZE,int* BACK_UP_PORT, char* BAC
         return false;
         
     }
+    client->child_pid=fork();
+    if (client->child_pid == -1) {
+        ERROR(true,"child can not be created");
+    }
+
+    
+
 
 
 
@@ -142,6 +150,9 @@ char* runCommand(char* command){
 }
 bool getAndRunCommand(struct Client* client,int PART_SIZE){
     char* command=recieveMessage(client,PART_SIZE);
+    if(!command){
+        return false;
+    }
     printf("command:%s\n",command);
     char* result;
     if(!(result=CheckForSpecialCommands(client,command))){
@@ -259,9 +270,11 @@ void initialize(int argc,char** argv,int * PORT,char* IP){
         //ip-------------------------
         if(!strcmp(argv[i],"-i")){
             if(argc==i+1){//it means nothing is after that
-                ERROR(true,"nothing came after -p");
+                ERROR(true,"nothing came after -i");
             }else{
-                *IP=(argv[i+1]);
+
+                strcpy(IP,argv[i+1]);
+                printf("%s\n",IP);
                 i++;
             }
         }

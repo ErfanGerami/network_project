@@ -5,8 +5,8 @@
 int PORT=3000;
 int PART_SIZE=1024;
 int BACK_LOG=3;
-char* BACK_UP_PORT="UNSET";//set to 0 for unset
-char* BACK_UP_IP="NOTSET";//set to UNSET for unset
+char BACK_UP_PORT[20]="UNSET";//set to 0 for unset
+char BACK_UP_IP[20]="NOTSET";//set to UNSET for unset
 /*
 protocole works like this:
 in the beginning of the connection server sends some data like PART_SIZE BACK_UP_PORT BACK_UP_IP

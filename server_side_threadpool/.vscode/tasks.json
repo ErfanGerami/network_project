@@ -9,7 +9,7 @@
                 "helper.c",
                 "myqueue.c",
                 "threadpool.c",
-                "-fdiagnostics-color=always",
+                "-fdiagnostics-color=always", 
                 "-g",
                 "${file}",
                 "-w",

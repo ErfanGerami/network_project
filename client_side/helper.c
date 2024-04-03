@@ -17,7 +17,7 @@ void ERROR(bool _exit,const char* message){
     }
     changeColor(RESET);
     if(_exit){
-        exit(1);//exiting with non zero valu
+        exit(1);//exiting with non zero value
     }
 
 }

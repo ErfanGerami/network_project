@@ -24,6 +24,7 @@ struct Client{
     char* IP[INET_ADDRSTRLEN];
     int socket_fd;
     char path[PATH_MAX];
+    pid_t child_pid;
     
 };
 void initialize(int argc,char** argv,int * PORT,char* IP);

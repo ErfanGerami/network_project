@@ -8,8 +8,8 @@ int PORT=3007;
 int PART_SIZE=1024;
 int BACK_LOG=3;
 int THREAD_NUM=5;
-char* BACK_UP_PORT="UNSET";//set to 0 for unset
-char* BACK_UP_IP="NOTSET";//set to UNSET for unset
+char BACK_UP_PORT[20]="UNSET";//set to 0 for unset
+char BACK_UP_IP[20]="NOTSET";//set to UNSET for unset
 
 extern struct Client* clients[MAX_CLIENTS];//max is set to be 60
 extern int client_cnt;
@@ -66,7 +66,6 @@ int main(int argc,char** argv){
     while(true){
         pthread_mutex_lock(&lock_for_clients);
         if(client_cnt==0){
-            printf( "efwef\n");
             pthread_mutex_unlock(&lock_for_clients);
             char* command=getNotEmptyWithOutBreakLineLine(NULL);
             if(checkCommandIsInternal(command)){
@@ -83,12 +82,11 @@ int main(int argc,char** argv){
         pthread_mutex_lock(&lock_for_clients); 
         if(!clients[current_client] || clients[current_client]->deleted ){
 
-
-            ERROR(false,"the client does not exist anymore(but you can see the last unseen result)");
+            if(client_cnt!=1)
+                ERROR(false,"the client does not exist anymore(but you can see the last unseen result)");
             for(int i=0;i<MAX_CLIENTS;i++){
                 if(clients[i]&& !clients[i]->deleted ){
                     current_client=i;
-                    printf("%d",i);
                     printf("switched to other clients\n");
                     break;
                 }
@@ -123,8 +121,18 @@ int main(int argc,char** argv){
             if(checkForAggregateCommands(command)){
                 excuteAggregateCommand(command,pool,PART_SIZE);
             }else{
-                struct Command* full_command=createCommand(clients[current_client],command,PART_SIZE);
-                AddJob(pool,full_command);
+                pthread_mutex_lock(&lock_for_clients); 
+
+                if (clients[current_client]){
+                
+                pthread_mutex_unlock(&lock_for_clients); 
+      
+                    struct Command* full_command=createCommand(clients[current_client],command,PART_SIZE);
+                    AddJob(pool,full_command);
+                }else{
+                    pthread_mutex_unlock(&lock_for_clients);
+
+                }
             }
         }
         
