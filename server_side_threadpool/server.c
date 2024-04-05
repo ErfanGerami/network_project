@@ -7,7 +7,7 @@
 int PORT=3007;
 int PART_SIZE=1024;
 int BACK_LOG=3;
-int THREAD_NUM=5;
+int THREAD_NUM=10;
 char BACK_UP_PORT[20]="UNSET";//set to 0 for unset
 char BACK_UP_IP[20]="NOTSET";//set to UNSET for unset
 
