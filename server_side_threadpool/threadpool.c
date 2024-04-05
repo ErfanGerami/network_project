@@ -27,6 +27,7 @@ void AddJob(struct ThreadPool* pool,void* job){
 }
 
 void* pickJob(void* inpp) {
+    int sssss=rand();
     struct Input* inp = (struct Input*)inpp;
     while (true) {
         pthread_mutex_lock(&inp->pool->queue_lock); 
@@ -35,9 +36,8 @@ void* pickJob(void* inpp) {
             // waiting for the queue to become non empty
             pthread_cond_wait(&inp->pool->queue_cond, &inp->pool->queue_lock);
         }
+                void* job = dequeue(&inp->pool->queue);
         pthread_mutex_unlock(&inp->pool->queue_lock); 
-
-        void* job = dequeue(&inp->pool->queue);
 
         inp->func(job);
     }
