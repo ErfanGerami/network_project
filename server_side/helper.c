@@ -1,10 +1,12 @@
 #include "helper.h"
 
 void changeColor(const char* color){
+    //changes the color of text that is going to be printed in console
     printf(color);
 }
 
 void ERROR(bool _exit,const char* message){
+    //a simple function to print errors
     char temp[200];
      if(message!=NULL){  
         strcpy(temp,RED);

@@ -1,18 +1,1 @@
-000qdwq
-dqwdw
-dwdq
-
-wd
-wqd
-dwq
-dwq
-qwd
-dqw
-qwd
-qwd
-wq
-d
-qwd
-qwd
-qwd
-
+a file to test the sending file opeeration

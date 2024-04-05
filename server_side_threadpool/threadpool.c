@@ -7,7 +7,7 @@ void initThreadPool(struct ThreadPool* pool,int worker_num,void*(*func)(void*)){
     pool->thread_IDs=(pthread_t*)malloc(sizeof(pthread_t)*worker_num);
     pool->thread_num=worker_num;
     initQueue(&pool->queue);
-        
+    //starts threads
     for(int i=0;i<worker_num;i++){
     struct Input* inp=(struct Input*)malloc(sizeof(struct Input));
         inp->func=func;
@@ -32,7 +32,6 @@ void* pickJob(void* inpp) {
         pthread_mutex_lock(&inp->pool->queue_lock); 
 
         while (!(&inp->pool->queue)->size) {
-    //printQueue(&inp->pool->queue);
             // waiting for the queue to become non empty
             pthread_cond_wait(&inp->pool->queue_cond, &inp->pool->queue_lock);
         }

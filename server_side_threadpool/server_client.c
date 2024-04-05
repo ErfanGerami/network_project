@@ -273,7 +273,7 @@ bool handShake(struct Client *client, int PART_SIZE, const char *BACK_UP_PORT, c
 }
 char *getAndSendCommandAndRecieveResult(struct Client *client, int PART_SIZE)
 {
-
+    //it gets the command that is typed in to console and runs it and gets the result
     changeColor(BLUE);
     printInput(client);
     changeColor(RESET);
@@ -360,6 +360,7 @@ char *ExecuteForSpecialCommands(struct Client *client, char *command, int PART_S
     }
     if (!strcmp(temp, "sendall"))
     {
+        //sends the following comand to all of the clients
         char *next_part = nexPart(temp, end_of_command);
         if (!next_part)
         {
@@ -387,7 +388,7 @@ char *ExecuteForSpecialCommands(struct Client *client, char *command, int PART_S
 
     if (!strcmp(temp, "cd"))
     {
-
+        //the cd should be treated diffrently 
         if (!sendMessage(client, command, PART_SIZE, show_errors))
         {
             return NULL;
@@ -405,7 +406,7 @@ char *ExecuteForSpecialCommands(struct Client *client, char *command, int PART_S
     }
     if (!strcmp(temp, "get_file"))
     {
-
+        //gets a file from client
         if (!sendMessage(client, command, PART_SIZE, show_errors))
         {
             return NULL;
@@ -430,6 +431,7 @@ char *ExecuteForSpecialCommands(struct Client *client, char *command, int PART_S
     }
     if (!strcmp(temp, "send_file"))
     {
+        //sends a file to a client
         char *temp_command = malloc(sizeof(char) * (101 + strlen(command)));
         strcpy(temp_command, command);
         strcat(temp_command, " ");
@@ -480,6 +482,7 @@ char *ExecuteForOrdinaryCommands(struct Client *client, char *command, int PART_
 
 struct Command *createCommand(struct Client *client, char *Command, int PART_SIZE)
 {
+    //creates an instance of Command to be passed as a void *
     struct Command *full_command = (struct Command *)malloc(sizeof(struct Command *));
     full_command->client = client;
     full_command->command = Command;
@@ -488,6 +491,8 @@ struct Command *createCommand(struct Client *client, char *Command, int PART_SIZ
 }
 void *runIncommingCommands(void *_command)
 {
+    //it is the function that should run on threadpool and run a command that is typed and
+    //gatter the result
     char *result;
     struct Command *command = (struct Command *)_command;
     if ((CheckForSpecialCommands(command->command)))
@@ -511,6 +516,7 @@ void *runIncommingCommands(void *_command)
 }
 void *keepAccepting(void *_input)
 {
+    //the function runs on a thread and accepts clients
 
     struct KeepAcceptingInput *input = (struct KeepAcceptingInput *)_input;
     while (1)
@@ -546,6 +552,8 @@ void *keepAccepting(void *_input)
 
 bool checkCommandIsInternal(char *command)
 {
+    //some commmands like switch are internal and just modify the internal state and they should be treated 
+    //diffrently
     char command_first[100];
     char *temp;
     if ((temp = strchr(command, ' ')) != NULL)
@@ -652,6 +660,7 @@ bool executeInternalCommands(char *command, int *current_client)
 }
 bool CheckResultNeedingCommand(char *command)
 {
+    //some commands like cd might need results immediatly
     char *temp = (char *)malloc(sizeof(char) * (strlen(command) + 2));
     strcpy(temp, command);
     char *end_of_command = temp + strlen(temp);
@@ -679,24 +688,27 @@ bool CheckResultNeedingCommand(char *command)
 }
 void delete_client(struct Client *client)
 {
-    // if result==NULL client
+    
     pthread_mutex_lock(&lock_for_clients);
     
     if (client)
     {
+        //checks if the client has been soft deleted
         if(!client->deleted){
             close(client->socket_fd);
 
         }
+        //if a client still has unshown result we soft delete it and otherwise we delete it completly
         if (!client->result)
         {
             clients[client->id] = NULL;
-            if (!client->deleted) // it means the cleint_cnt is decreamented once before
+            if (!client->deleted) // it means the client_cnt is decreamented once before
                 client_cnt--;
             free(client);
         }
         else
         {
+
 
             if (!client->deleted)
                 client_cnt--;
@@ -708,6 +720,7 @@ void delete_client(struct Client *client)
 }
 bool checkForAggregateCommands(char *command)
 {
+    //checks if a command should be sent to all clients or not
     char *temp = (char *)malloc(sizeof(char) * (strlen(command) + 2));
     char *end_of_command = command + strlen(command);
     strcpy(temp, command);
