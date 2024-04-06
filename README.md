@@ -36,3 +36,6 @@ add ```-t 10 ``` for threaded server and change ./out/server.out to ./out/parser
 ```
 ./out/client.out -i 127.0.0.1  -p 3004 --detached
 ```
+
+
+salam
