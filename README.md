@@ -16,7 +16,7 @@ make && ./server -p port -b backlog -s part_size -bp backup_port -bi backup_ip
 it sends the part size to the client and each socket will sends maximum of part size data 
 you can change that for better performance
 
-## server side (multi client)
+## server side (multi client) 
 ```
 make && ./server -p port -b backlog -s part_size -bp backup_port -bi backup_ip  -t thread_num
 it uses thread pool for dealing with clinets and a seperate thread for accepting them
@@ -31,7 +31,7 @@ run ```make``` for both to compile them
 ./out/server.out -b 4 -s 400 -bp 3001 -bi 127.0.0.1  -p 3000
 
 ```
-add ```-t 10 ``` for threaded server and change ./out/server.out to ./out/parserver.out
+add  ```-t 10 ``` for threaded server and change ./out/server.out to ./out/parserver.out
 ### client side
 ```
 ./out/client.out -i 127.0.0.1  -p 3004 --detached
